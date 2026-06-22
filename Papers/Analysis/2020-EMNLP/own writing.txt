@@ -1,0 +1,15 @@
+Problem
+1)No prior simile generation tool almost other researches are based on imile classification and identification
+2)Lack of parallel training data for simile generation: there was no large scale parallelcorpus of pair like (literal sentence, simile) pair.
+3)Earlier metaphor generation methods relied on templates,heurisitcs or lexical databases. Those do not preserve contextual core meaning.
+4)Difficulty in identifing real or implicit meaning of simile
+5)there is no creative natural langauage generation framework 
+
+Existing work
+1)Prior computational work has focused mainly on simile detection and analysis rather than generation.
+2)Simile detection studies include annotation and recognition of similes in user-generated and literary text.
+3)Earlier metaphor generation methods relied on templates, heuristics, lexical databases, or word embeddings.
+4)More recent metaphor generation work used neural models and seq2seq masking approaches.
+
+Findings
+1)Systematic approach for simile generation

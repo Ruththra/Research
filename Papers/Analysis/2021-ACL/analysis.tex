@@ -1,0 +1,133 @@
+\documentclass[12pt]{article}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{parskip}
+
+\doublespacing
+
+\title{Analysis of ``Figurative Language in Recognizing Textual Entailment'' \\ \large ACL 2021 Findings}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Problem}
+
+Figurative language pervades human discourse---novels, poems, films, scientific literature, and social media conversations all rely on similes, metaphors, and irony to convey intimacy, humor, politeness, and intense emotion. Despite this ubiquity, figurative language remains ``a bottleneck in automatic text understanding,'' particularly within Natural Language Processing systems.
+
+This study investigates whether state-of-the-art Recognizing Textual Entailment (RTE) models, trained on popular datasets, can adequately capture and understand figurative language expressions and their non-literal meanings. RTE---the task of determining whether one sentence (the context) entails another (the hypothesis)---serves as a proxy for evaluating NLP systems' natural language understanding capabilities.
+
+The research has four objectives: (1) introduce a collection of RTE datasets focused specifically on figurative language phenomena; (2) create over 12,500 RTE examples by leveraging five existing datasets annotated for similes, metaphors, and irony; (3) evaluate state-of-the-art RTE models' performance on different aspects of figurative language; and (4) provide a challenging testbed for evaluating RTE models' non-literal language comprehension.
+
+Several key challenges motivate this work. Figurative language requires understanding beyond literal word meanings, demands pragmatic inference of speaker intent, and depends on grounding in real-world knowledge. Different figurative types employ distinct mechanisms for conveying non-literal meaning, and the distinction between well-worn (conventional) and novel (unconventional) expressions poses additional difficulty. Current RTE datasets such as MNLI contain figurative language but lack explicit focus on these phenomena.
+
+\section{Existing Works}
+
+Recent work has tested RTE systems on an expanded range of inference patterns, including pragmatic inferences \cite{jeretic2020}, veridicality \cite{ross2019}, function word comprehension \cite{kim2019}, compositionality in sentence embeddings \cite{dasgupta2018}, temporal and aspectual entailment \cite{kober2019}, and simple lexical inferences \cite{glockner2018}. However, figurative language has received comparatively limited systematic attention within RTE frameworks.
+
+Earlier efforts include Agerri (2008), who analyzed metaphor-dependent examples in Pascal RTE-1 and RTE-2 datasets, and Poliak et al. (2018), who created a diverse collection of RTE datasets that included figurative language examples focused on pun identification. On the figurative language side, Chakrabarty et al. (2020) released test sets of literal sentences paired with human-written simile paraphrases, and Chakrabarty et al. (2021) created diverse metaphor test sets from multiple domains. For irony, Peled and Reichart (2017) produced parallel datasets of ironic tweets and non-ironic rephrasings, while Ghosh et al. (2020) developed speaker-hearer interpretation datasets.
+
+Research on metaphor comprehension indicates that understanding metaphors requires grasping abstract concepts and making connections between seemingly unrelated ideas \cite{gutierrez2016, mohammad2016}, and that metaphors express deep feelings and complex attitudes \cite{veale2016}. Cognitive factors also affect interpretation difficulty \cite{kintsch2002, glucksberg1998}. For irony, speakers typically mean the opposite of what they say \cite{sperber1981, dews2007}, and irony serves important social and communicative functions \cite{jorgensen1996}.
+
+Transformer-based contextual language models have been shown to poorly capture knowledge grounded in visual perception \cite{weir2020}, a limitation that extends to understanding comparisons requiring visual and physical world knowledge.
+
+Several gaps persist in the existing literature. First, while figurative language appears in existing RTE datasets like MNLI, these datasets lack explicit focus on figurative phenomena. No systematic collection of RTE examples tests figurative language understanding across multiple types. Second, there is insufficient analysis of how and why neural RTE models fail on figurative language tasks. Third, models struggle with pragmatic inferences, particularly for irony and non-literal meaning. Fourth, models lack sufficient world knowledge grounding for interpreting comparative figurative expressions. Fifth, the distinction between unconventional and conventional figurative expressions remains underexplored. Finally, irony markers---metaphors within irony, alternate spelling, hashtags---are insufficiently handled.
+
+\section{Findings}
+
+This paper identifies six research gaps and addresses five of them directly. The identified gaps are: (1) figurative language as a bottleneck in NLU; (2) the absence of a systematic RTE dataset for figurative language; (3) insufficient model analysis on figurative language failures; (4) models exploiting surface-level cues rather than genuine understanding; (5) lack of world knowledge grounding in transformer models; and (6) poor handling of novel or unconventional figurative expressions.
+
+The paper fulfills these gaps as follows. It creates the first systematic collection of 12,437 RTE examples focused on three figurative language types (simile, metaphor, irony) from five existing datasets, providing a standardized testbed. It provides in-depth qualitative analysis of model failures, categorizing errors by linguistic strategy and knowledge type. It demonstrates that high accuracy on irony meaning tasks (exceeding 90\% for RoBERTa-large) is achieved through surface-level lexical cues (antonyms, negation) rather than genuine understanding, revealing a critical limitation in evaluation validity. It systematically maps model failures to specific missing knowledge: visual or physical world knowledge for similes, conventional versus unconventional metaphor distinctions, and irony marker recognition. Finally, it establishes baseline accuracy scores for three neural architectures (NBoW, InferSent, RoBERTa-large) across five figurative language test sets.
+
+In summary, the paper addresses the lack of systematic evaluation of RTE models on figurative language by creating a comprehensive testbed and conducting detailed failure analysis. It reveals that state-of-the-art models achieve high performance through shortcut learning rather than genuine understanding, and identifies specific gaps in world knowledge, pragmatic inference, and handling of unconventional expressions as key limitations.
+
+\section{Methodology}
+
+\subsection{Data Collection}
+
+The study adapts five existing annotated figurative language datasets into RTE format. The first is the Simile Dataset \cite{chakrabarty2020}, comprising 150 literal sentences from r/WritingPrompts and r/Funny subreddits, each aligned with two human-written simile paraphrases, yielding 600 RTE pairs. The second is the Metaphor Dataset \cite{chakrabarty2021}, containing 150 literal sentences from different domains annotated with metaphorical paraphrases by expert annotators, yielding 613 RTE pairs. The third is the Irony Verbal Meaning Dataset (SIGN) \cite{peled2017}, a parallel dataset of tweets with verbal irony and non-ironic rephrasings; a subset of 2,000 pairs (SIGN2000) is annotated for RTE evaluation, yielding 2,000 RTE pairs. The fourth is the Irony Speaker-Hearer Dataset (Sim-Hint) \cite{ghosh2020}, containing 4,761 ironic-literal pairs, yielding 4,762 RTE pairs. The fifth is the Ironic Intent Dataset \cite{vanhee2018}, comprising 4,598 RTE pairs derived from ironic tweets using template-based generation.
+
+The total dataset contains 12,437 RTE pairs: 600 simile pairs (300 entailed, 300 not-entailed), 613 metaphor pairs (307 entailed, 306 not-entailed), 2,000 SIGN2000 pairs (133 entailed, 1,867 not-entailed), 4,762 Sim-Hint pairs (0 entailed, 4,762 not-entailed), and 4,601 Irony Intent pairs (2,212 entailed, 2,389 not-entailed).
+
+\subsection{RTE Framework and Data Transformation}
+
+The research frames figurative language understanding as an RTE task: the figurative expression serves as context, and the intended literal or pragmatic interpretation serves as hypothesis. For similes, figurative-literal aligned sentences become entailed pairs, and not-entailed examples are created by flipping the literal verb or property with antonyms. For example, ``Hitler skittered off like an enthusiastic sloth'' entails ``slowly'' but does not entail ``fast.'' For metaphors, metaphorical-literal paraphrases become entailed pairs (focusing on verb-based metaphors), and not-entailed examples are generated by manually swapping literal verbs with antonyms. For irony meaning, original ironic messages serve as contexts and intended meanings serve as hypotheses. For irony intent, template-based generation produces pairs of the form ``Name tweeted that tweet'' (context) and ``Name was ironic'' (hypothesis).
+
+\subsection{Models Evaluated}
+
+Three neural RTE models are evaluated, all trained on the MNLI dataset (approximately 433K sentences from diverse genres). The first is a Bag-of-Words model (NBoW), which averages word embeddings (300-dimensional GloVe) separately for contexts and hypotheses, concatenates them, and passes the result to a logistic regression softmax classifier. The second is InferSent, which uses a BiLSTM encoder for independent sentence encoding, with representations fed to an MLP classifier using 300-dimensional GloVe embeddings. The third is RoBERTa-large, a transformer-based pre-trained model fine-tuned on MNLI and accessed through the Hugging Face Transformers library, representing state-of-the-art neural approaches.
+
+\subsection{Evaluation and Analysis}
+
+The primary evaluation metric is accuracy (percentage of correctly classified pairs), supplemented by manual qualitative error analysis. The analysis framework operates along three dimensions. The first is linguistic strategy analysis, examining categories from Ghosh et al. (2020): lexical and phrasal antonyms, negation, weakening of sentiment intensity, interrogative-to-declarative transformation, counterfactual desiderative constructions, and pragmatic inference. The second is knowledge-based analysis, covering world knowledge (physical and visual), conventional versus unconventional expressions, and linguistic irony markers (metaphor, alternate spelling, hashtags). The third is error classification, categorizing model errors by underlying cause and mapping them to knowledge type requirements.
+
+\section{Limitations}
+
+\subsection{Technical Limitations}
+
+RoBERTa-large and other transformer-based models struggle to capture knowledge grounded in visual perception and physical world understanding. BiLSTM-based approaches (InferSent) show even lower performance on visual and physical reasoning tasks, and simple bag-of-words aggregation lacks the semantic composition abilities needed for figurative language.
+
+Models trained on MNLI may not transfer well to specialized or unconventional figurative language. The IIntent dataset, created using templates, exhibits distributional properties very different from MNLI training data, leading to poor model performance---InferSent achieves very low accuracy on this task. Additionally, while MNLI includes contradiction, neutral, and entailment classes, some test sets are strictly binary, potentially conflating neutral with contradictory examples.
+
+\subsection{Dataset Limitations}
+
+The simile base dataset contains only 150 literal-simile pairs, limiting diversity, and its source in specific subreddits may not represent the full range of simile usage. The metaphor dataset focuses on verb-based metaphors, underrepresenting other metaphor types, and remains relatively small at 150 base examples. The SIGN2000 subset of 2,000 random pairs may not capture the full range of irony phenomena. The Sim-Hint dataset shows 100\% not-entailment class, creating severe class imbalance. Heavy reliance on Twitter data may not generalize to other irony contexts. Both simile and metaphor datasets use antonym substitution for not-entailed examples, which may introduce systematic patterns that models exploit.
+
+\subsection{Experimental Limitations}
+
+Only three model types are tested, all fine-tuned on MNLI; other architectures, pre-training approaches, and training datasets are not evaluated. No ensemble methods are used. Accuracy scores are reported without confidence intervals or significance testing. Models are not tested on figurative language datasets from different domains or sources. Detailed error analysis appears conducted on sample examples rather than through systematic analysis. Evaluation is limited to English, with no adversarial or out-of-distribution testing, and performance is not compared against figurative language-specific baselines.
+
+\subsection{Threats to Validity}
+
+Internal validity threats include confounding variables in data creation (antonym selection methodology, manual versus automatic annotation, annotator expertise differences), model adaptation effects (different fine-tuning procedures or hyperparameters), and dataset interaction effects (mixing datasets with different collection methodologies and class distributions). External validity threats include uncertain generalization across figurative types (personification, metonymy, hyperbole are not tested), model evolution (findings may not apply to newer architectures), and the gap between binary RTE framing and real-world inference needs. Construct validity threats include RTE as an insufficient proxy for understanding, ambiguity in defining ``intended meaning'' for figurative language, and post-hoc rather than theoretically grounded operational definitions. Conclusion validity threats include limited mechanistic explanation for causal claims and unruled-out alternate explanations for model failures.
+
+\subsection{Current World Limitations}
+
+Beyond the explicit limitations acknowledged by the authors, several gaps emerge when comparing the study against real-world requirements. The evaluation is entirely monolingual (English), while figurative language varies substantially across languages and cultures. The datasets are drawn primarily from social media (Twitter, Reddit), leaving figurative language in scientific writing, literature, spoken dialogue, and formal discourse underrepresented. The binary RTE framing oversimplifies real-world inference, where figurative meaning is often context-dependent and admits multiple valid interpretations. No evaluation is conducted on downstream tasks (sentiment analysis, machine translation, summarization) where figurative language understanding would have practical impact. The study does not address computational efficiency or deployment constraints that would arise in production systems handling figurative language at scale.
+
+\section{Future Work}
+
+The authors explicitly identify several directions for future research. They note that further analysis of the very low IIntent performance remains for future work, particularly the impact of template-based dataset construction on model generalization. They call for deeper investigation of pragmatic inference mechanisms underlying figurative language and improved solutions for integrating the diverse forms of world knowledge required for comparative figurative expressions. They also suggest developing more nuanced evaluation frameworks that capture degrees of figurative understanding rather than binary entailment, and establishing standardized benchmarks for systematic evaluation of figurative language understanding.
+
+\section{Learning}
+
+The study makes three primary contributions. First, it produces the first systematic collection of RTE datasets specifically focused on figurative language, comprising 12,437 examples from five corpora covering similes, metaphors, and irony. Second, it provides a standardized testbed enabling systematic comparison of multiple neural architectures on figurative phenomena and establishes baseline performance metrics. Third, it conducts in-depth analysis of how and why state-of-the-art models fail on figurative language, identifying specific failure patterns and mapping them to underlying knowledge requirements.
+
+Several important findings emerge. RoBERTa-large substantially outperforms InferSent and NBoW on similes, suggesting that similes require sophisticated semantic representations. Models perform relatively better on conventional metaphors than unconventional ones, indicating that established conceptual mappings aid comprehension. RoBERTa-large achieves strong performance on irony meaning, but this is driven by reliance on lexical antonyms and negation in hypotheses rather than genuine pragmatic understanding. Models show a dramatic performance drop on irony intent, reflecting the template-based dataset's distributional divergence from MNLI training data.
+
+The reliance on lexical antonyms and simple negation in hypothesis construction enables models to achieve high accuracy without understanding pragmatic meaning. This represents a fundamental limitation in evaluating true understanding versus pattern matching. RoBERTa-large fails on similes requiring implicit physical or visual world knowledge (e.g., ``lying like gray slabs of cement'' $\rightarrow$ ``lying unconscious'' is incorrectly rejected), while succeeding on similes with established associations (e.g., ``turning like a ripening tomato'' $\rightarrow$ ``face turning red''). Models struggle with rhetorical questions, pragmatic implications, and desiderative constructions, revealing deficits in pragmatic reasoning. For metaphors, novel verb metaphors (``night sky flurried with massive bombardment'') cause systematic failures, while conventional metaphors (``sudden fame kindled her ego'' $\rightarrow$ ``increased her ego'') are handled well, indicating that performance correlates with pre-training corpus frequency. Irony markers---nested metaphors, exaggerated spelling (``grrrrreat''), and hashtag expressions (``\#notinthemood'')---are not reliably recognized, as reflected in low irony intent accuracy.
+
+The study yields several broader lessons. Binary entailment classification oversimplifies figurative language understanding; success on RTE tasks does not guarantee genuine comprehension. Pre-training data heavily shapes figurative understanding---models excel at well-worn expressions but systematically misunderstand novel or domain-specific figurative language. Successful figurative understanding requires simultaneous integration of semantic, world, pragmatic, and cultural knowledge, but current models are deficient in pragmatic and world knowledge dimensions. Simple linguistic strategies in dataset construction enable shortcut learning, creating misleading impressions of capability. Current language models lack adequate grounding in visual properties, physical properties, and spatial relationships. Models trained primarily on literal language lack implicature recognition, speaker intent inference, context-dependent meaning adjustment, and irony detection capabilities.
+
+For model developers, the study suggests incorporating multimodal pre-training, designing pragmatic reasoning architectures, creating specialized figurative language fine-tuning datasets, and explicitly testing figurative language understanding. For dataset creators, it recommends linguistic strategy diversity, distribution matching with real-world usage, acknowledgment of multiple valid interpretations, and domain diversity. For evaluation frameworks, it advocates reporting precision and recall alongside accuracy, requiring systematic error categorization, developing granular evaluation beyond binary classification, and benchmarking against human performance. For the research community, it recommends treating figurative language understanding as an explicit research goal, coordinating across semantics and pragmatics communities, testing on downstream tasks, and investigating cross-linguistic validity.
+
+The central takeaway is that while state-of-the-art neural RTE models achieve high performance on some figurative language tasks, this success often masks fundamental limitations in true understanding. Models exploit surface-level lexical cues and established conventional patterns but fail systematically on novel expressions requiring genuine pragmatic inference and world knowledge. Figurative language understanding remains a significant bottleneck in automatic text understanding, requiring architectural innovations, improved training data, and specialized evaluation frameworks beyond current standard approaches.
+
+\begin{thebibliography}{9}
+\bibitem{jeretic2020} Jeretic, P., Warstadt, A., Bhooshan, S., and Williams, A. (2020).
+\bibitem{ross2019} Ross, A. and Pavlick, E. (2019).
+\bibitem{kim2019} Kim, N., Patel, R., Poliak, A., Wang, A., and McCoy, R. T. (2019).
+\bibitem{dasgupta2018} Dasgupta, T., Saha, R., Dey, L., and Naskar, S. K. (2018).
+\bibitem{kober2019} Kober, T., Weeds, J., and Reffin, J. (2019).
+\bibitem{glockner2018} Glockner, M., Shwartz, V., and Goldberg, Y. (2018).
+\bibitem{agerri2008} Agerri, R. (2008).
+\bibitem{poliak2018} Poliak, A., Haldar, A., Rudinger, R., Hu, J. E., Pavlick, E., White, A. S., and Van Durme, B. (2018).
+\bibitem{chakrabarty2020} Chakrabarty, T., Choi, Y., and Shwartz, V. (2020).
+\bibitem{chakrabarty2021} Chakrabarty, T., Choi, Y., and Shwartz, V. (2021).
+\bibitem{peled2017} Peled, O. and Reichart, R. (2017).
+\bibitem{ghosh2020} Ghosh, D., Guo, W., and Muresan, S. (2020).
+\bibitem{vanhee2018} Van Hee, C., Lefever, E., and Hoste, V. (2018).
+\bibitem{weir2020} Weir, N., Poliak, A., and Van Durme, B. (2020).
+\bibitem{gutierrez2016} Gutierrez, E. D., Shutova, E., Marghetis, T., and Bergen, B. (2016).
+\bibitem{mohammad2016} Mohammad, S., Shutova, E., and Turney, P. (2016).
+\bibitem{veale2016} Veale, T., Shutova, E., and Klebanov, B. B. (2016).
+\bibitem{kintsch2002} Kintsch, W. and Bowles, A. R. (2002).
+\bibitem{glucksberg1998} Glucksberg, S. (1998).
+\bibitem{sperber1981} Sperber, D. and Wilson, D. (1981).
+\bibitem{dews2007} Dews, S., Kaplan, J., and Winner, E. (2007).
+\bibitem{jorgensen1996} Jorgensen, J. (1996).
+\end{thebibliography}
+
+\end{document}

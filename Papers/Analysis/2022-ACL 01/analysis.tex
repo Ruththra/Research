@@ -1,0 +1,120 @@
+\documentclass[12pt]{article}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{amsmath}
+
+\setstretch{1.15}
+
+\title{Probing Simile Knowledge from Pre-trained Language Models for Simile Interpretation and Generation}
+\author{Paper Analysis}
+\date{ACL 2022}
+
+\begin{document}
+\maketitle
+
+\section{Problem}
+
+Simile is a figurative language device in which two fundamentally different things are explicitly compared using ``like'' or ``as.'' Simile interpretation (SI) aims to identify a suitable attribute given a tenor and vehicle, while simile generation (SG) aims to select a proper vehicle given a tenor and attribute. These two tasks can be unified into the form of Simile Triple Completion (STC), where a simile sentence is represented as a triple (tenor, attribute, vehicle).
+
+Prior work on SI and SG has relied on limited training corpora or hand-crafted knowledge bases such as ConceptNet and FrameNet. These resources are labor-intensive to construct, time-consuming to maintain, and impose an upper limit on the diversity of generated results. Furthermore, standard masked language model (MLM) predictions exhibit a high-frequency word bias, tending to predict common words such as ``good'' or ``bad,'' which conflicts with the creative and unexpected nature of effective similes. Few studies have explored directly probing simile knowledge from pre-trained language models (PLMs), making this a novel research direction with limited established baselines. The central challenge is how to effectively probe implicit simile knowledge from PLMs to solve both SI and SG tasks in a unified framework without requiring fine-labeled training data or manually constructed knowledge graphs.
+
+\section{Existing Works}
+
+Previous approaches to simile interpretation include Meta4meaning, which uses trained LSA vector representations based on the degree of abstraction and salience imbalance to select appropriate attributes. GEM calculates cosine similarity and normalized PMI between each attribute and tenor/vehicle based on GloVe representations. ConScore proposes a connecting score to select an attribute word for a given tenor-vehicle pair. Knowledge-based approaches by Gero and Chilton (2019), Stowe et al. (2021), and Veale et al. (2016) rely on hand-crafted knowledge bases such as ConceptNet and FrameNet to find intermediate attributes. For simile generation, sequence-to-sequence models by Lewis et al. (2020) and Zhang et al. (2021) fine-tune on limited training corpora using pattern-based or knowledge-based approaches. Style transfer approaches generate similes using symbolism and discriminative decoding.
+
+Related research on probing knowledge from PLMs includes work by Petroni et al. (2019), Shin et al. (2020), Haviv et al. (2021), and Jiang et al. (2020), who designed discrete patterns to explore commonsense and world knowledge embedded in PLMs. Continuous pattern search methods by Zhong et al. (2021) and Li and Liang (2021) probe knowledge by searching for best-performing continuous patterns in embedding space. Song et al. (2021) proposed a knowledge graph embedding approach for metaphor processing and introduced the simile triple formalism.
+
+Several gaps exist in current solutions. Existing SI/SG approaches depend on manually constructed knowledge bases or limited corpora, which are labor-intensive and language-specific, making them scarce for non-English languages. Methods relying on small training sets or knowledge graphs inherently cap the variety of generated simile components. Despite PLMs being shown to encode rich world knowledge, few works have directly probed simile-specific knowledge from these models. Prior works typically address SI and SG as separate tasks, and no prior work unifies both using PLM probing in a single framework. Finally, standard MLM predictions favor high-frequency, common words, which contradicts the creative and surprising nature of effective similes.
+
+\section{Findings}
+
+This paper proposes the first unified framework that solves both simile interpretation and simile generation using pre-trained language models, formalized as Simile Triple Completion (STC). The authors state: ``To the best of our knowledge, it is the first work to introduce pre-trained language models to unify these tasks.''
+
+The paper introduces Adjective-Noun Mask Training (ANT), a novel secondary pre-training stage that fine-tunes PLMs by masking only nouns and adjectives in amod dependencies. After ANT, the frequency of common words such as ``good'' drops significantly, and diversity for both SI and SG improves substantially. Pattern Ensemble (PE) and Pattern Search (PS) are proposed to address the pattern dependency issue and improve both quality and robustness of predictions. The framework operates without fine-labeled training data or hand-crafted knowledge bases, relying solely on implicit knowledge encoded in PLMs.
+
+Key findings confirm that PLMs implicitly learn simile-relevant knowledge from large-scale corpora during pre-training. ANT significantly reduces high-frequency word bias, confirming that targeted secondary training can redirect model predictions toward more diverse and creative outputs. The optimal pattern combinations differ by task: for SI, the best subset is $\{p_1, p_5\}$ (Class I + Class II), supporting Ortony's (1979) hypothesis that the highlighted attribute is more salient in the vehicle domain. For SG, the best subset is $\{p_3, p_4\}$ (Class I + Class II). Automatic evaluation scores are higher for SI than SG, while human evaluation scores show the opposite trend, attributed to the smaller candidate space for attributes versus the more varied and unexpected nature of vehicle choices.
+
+\section{Methodology}
+
+The proposed framework unifies SI and SG into a Simile Triple Completion (STC) task. Given an incomplete triple (tenor, attribute, vehicle) where one element is missing, the framework constructs masked sentences using manual patterns and employs a pre-trained masked language model that has undergone ANT to predict the missing element. Pattern Ensemble and Pattern Search are applied to improve prediction quality.
+
+\subsection{Data Collection}
+
+ANT training data is constructed by extracting sentences from BookCorpus (Zhu et al., 2015) with length less than 64 tokens. Only sentences containing \textit{amod} (adjectival modifier) dependencies are retained, identified using trankit (Nguyen et al., 2021). Nouns or adjectives at the end of amod relations are masked, with each word masked no more than 5 times. The final dataset contains 98K sentences (68K noun-masked, 30K adjective-masked).
+
+Evaluation uses the dataset from Roncero and de Almeida (2015), containing multiple attributes for each (tenor, vehicle) pair. After filtering by reversing simile triples with attribute frequencies greater than 4, the train set contains 533 samples and the test set contains 145 samples. The train set is used for Pattern Search ($D_{PS}$), and the test set is used for final evaluation.
+
+\subsection{System Design}
+
+The base model is BERT-Large (340M parameters). The ANT model ($LM_{ANT}$) is BERT-Large fine-tuned on the constructed ANT dataset using MLM loss with Adam optimizer (learning rate: 5e-5, batch size: 32, max sequence length: 64, 3 epochs).
+
+Twelve manual patterns are organized into four classes. Class I models the relationship between all three simile elements (tenor, attribute, vehicle) using patterns $p_1$--$p_3$. Class II models the relationship between vehicle and attribute using patterns $p_4$--$p_6$. Class III models the relationship between tenor and attribute using patterns $p_7$--$p_9$. Class IV models the relationship between tenor and vehicle (attribute omitted) using patterns $p_{10}$--$p_{12}$. For simile generation, predicted vehicles semantically similar to the tenor are filtered out using GloVe embeddings with a threshold of 0.4, corresponding to the maximum similarity score of tenor-vehicle pairs in the train set.
+
+\subsection{Algorithms and Techniques}
+
+Simile Triple Completion (STC) defines the unified task where a triple $(T, A, V)$ is completed by predicting the missing element. For SI: $(T, \text{None}, V) \rightarrow$ predict $A$. For SG: $(T, A, \text{None}) \rightarrow$ predict $V$.
+
+Masked Language Model Probing constructs a sentence from the incomplete triple using a pattern, masks the target element, and uses the PLM to predict the masked position over the task-specific vocabulary. The top-$K$ highest probability words are selected as results.
+
+Adjective-Noun Mask Training (ANT) is a secondary pre-training stage where only nouns or adjectives in amod dependencies are masked, and masking frequency is capped at 5 per word. This reduces the model's bias toward high-frequency words and increases prediction diversity.
+
+Pattern Ensemble (PE) averages the log-probability distributions over all applicable patterns for a given task. For SI, it uses patterns from Classes I, II, and III. For SG, it uses patterns from Classes I and IV only.
+
+Pattern Search (PS) iterates over all subsets of patterns on the training dataset ($D_{PS}$) to find the optimal pattern combination that maximizes the pattern ensemble performance, then applies the best subset for inference.
+
+\subsection{Evaluation}
+
+Automatic metrics include diversity (p@K), measuring the proportion of unique words in the top-$K$ predicted results across the test set; Mean Reciprocal Rank (MRR), the average of the reciprocal rank of ground-truth label words in the predicted candidate list; and R@K (Recall at K), the percentage of label words appearing in the top-$K$ predictions, where a predicted word is considered correct if it is a synonym of the label word according to WordNet.
+
+Human evaluation annotators score predicted simile triples on a 3-point scale (0: unacceptable, 1: acceptable, 2: acceptable and creative). Each triple is annotated by 3 independent annotators, with inter-annotator agreement measured using Fleiss's kappa. Baselines include Meta4meaning, GEM, ConScore, and vanilla BERT (single pattern MLM prediction without ANT).
+
+\section{Limitations}
+
+\subsection{Technical Limitations}
+
+The 12 manual patterns used in the framework are heuristically designed and may not capture all possible simile expression forms. Pattern search mitigates this but is limited to combinations of the pre-defined set. ANT trades off accuracy for diversity: while it significantly improves prediction diversity for both SI and SG, it slightly decreases the average correctness scores on automatic and human evaluations compared to vanilla BERT, as simile-specific knowledge is not explicitly incorporated during ANT training. Pattern search requires iterating over all subsets of patterns on the training dataset, which scales exponentially with the number of patterns ($2^{12}$ combinations). The framework's performance is tied to BERT-Large specifically; its effectiveness with smaller models or other architectures such as GPT or T5 is unexplored.
+
+\subsection{Dataset Limitations}
+
+Evaluation is conducted on a relatively small dataset (533 training, 145 test samples) derived from Roncero and de Almeida (2015), limiting generalizability. The framework is evaluated only on English simile data; its effectiveness on other languages is unknown. The dataset contains annotations for a fixed set of tenor-vehicle pairs with multiple attributes but does not cover the full diversity of simile usage in natural language. The ANT training data is derived from BookCorpus, which may not be representative of the simile distribution in other domains or genres.
+
+\subsection{Experimental Limitations}
+
+Baselines compared are primarily traditional methods (Meta4meaning, GEM, ConScore); comparison with more recent neural approaches or other PLM probing methods is limited. Only BERT-Large is used as the base model, with no experiments using RoBERTa, GPT-2, or T5. Human evaluation scores rely on subjective judgment, and while Fleiss's kappa shows substantial agreement for SI and moderate agreement for SG, inherent subjectivity remains. The framework is evaluated on simile triple completion in isolation, with no assessment of its utility for downstream NLP tasks.
+
+\subsection{Threats to Validity}
+
+Internal validity is threatened by the filtering of predicted vehicles using GloVe similarity (threshold 0.4), which introduces a dependency on the quality of word embeddings. External validity is limited by results on a single, small, English-only dataset. Construct validity is affected by the use of WordNet synonyms to determine correctness in R@K, which may miss semantically valid but non-synonymous predictions. Pattern search overfitting is possible, as the selection process may introduce indirect overfitting to dataset characteristics.
+
+\subsection{Current World Limitations}
+
+In practical deployment, the framework's reliance on BERT-Large (340M parameters) poses significant computational requirements for real-time applications. The exponential scaling of pattern search ($2^n$ for $n$ patterns) limits extensibility: expanding the pattern set to cover more literary or domain-specific forms would quickly become intractable. The framework's English-only evaluation is a critical gap given that figurative language varies substantially across cultures and languages, and the hand-crafted knowledge bases the authors criticize are still more mature for English than for most other languages. The small evaluation dataset (145 test samples) is insufficient for production-grade confidence in real-world simile generation systems. The vehicle filtering heuristic using GloVe embeddings with a fixed threshold does not adapt to context, making it brittle in open-domain settings where tenor-vehicle relationships vary widely. Finally, the absence of downstream task evaluation means the practical utility of the framework for applications such as creative writing assistance or educational tools remains undemonstrated.
+
+\section{Future Work}
+
+The authors identify several short-term improvements: expanding the pattern set to cover a wider range of simile expression forms including more complex and literary structures; extending the framework to other pre-trained model architectures such as RoBERTa, GPT-2, T5, and BART to verify generalizability; exploring alternative secondary pre-training strategies that better balance diversity and correctness; and evaluating on larger and more diverse simile datasets including cross-lingual data.
+
+Long-term research directions include extending the approach to probe other types of figurative language from PLMs such as metaphor, metonymy, and personification; investigating how to mine broader or more complex knowledge from PLMs beyond similes, including commonsense reasoning, causal knowledge, and cultural associations; replacing or complementing discrete pattern search with continuous prompt optimization methods such as prefix-tuning or soft prompts; and adapting the framework for multilingual simile interpretation and generation.
+
+Potential extensions mentioned by the authors include applying the framework to downstream NLP tasks such as sentiment analysis, creative writing assistance, question answering, and writing polishing; developing a scoring mechanism to rank generated similes by creativity, aptness, and aesthetic quality; building interactive systems where users provide partial simile components and receive creative completions; and exploring cross-modal simile generation that bridges modalities such as visual similes comparing images to concepts.
+
+\section{Learning}
+
+\subsection{Technical Concepts}
+
+Pre-trained language models implicitly encode simile-relevant knowledge including world knowledge and commonsense learned from large-scale corpora during pre-training. This knowledge can be effectively probed using masked prediction with appropriately designed patterns. Adjective-Noun Mask Training (ANT) demonstrates that targeted secondary pre-training, where only specific dependency types are masked, can redirect model predictions away from high-frequency words toward more diverse and creative outputs. Pattern Ensemble (PE) shows that averaging predictions across multiple pattern variations is a low-cost method to improve robustness. Pattern Search (PS) reveals that automated discovery of optimal pattern subsets can find non-intuitive but effective combinations that outperform full ensemble approaches.
+
+\subsection{Research Insights}
+
+A key insight is the diversity-correctness trade-off: techniques that improve diversity (like ANT) may temporarily reduce correctness on standard metrics, but this can be compensated for with complementary techniques (PE, PS). The optimal pattern combinations differ by task---$\{p_1, p_5\}$ for SI and $\{p_3, p_4\}$ for SG---confirming that simile interpretation and generation have asymmetric properties and should be evaluated differently. Attributes are more constrained (often physical properties of the vehicle), while vehicles are more open-ended and creative. This asymmetry is further reflected in evaluation: automatic scores favor SI (smaller candidate space) while human scores favor SG (more varied and unexpected vehicle choices).
+
+\subsection{Design Patterns}
+
+The framework follows a straightforward pipeline architecture: mask $\rightarrow$ predict $\rightarrow$ ensemble $\rightarrow$ search. This simplicity makes the approach reproducible, and the authors provide a GitHub repository and HuggingFace model. Vehicle filtering using GloVe embeddings with a fixed threshold is a practical heuristic to prevent trivial analogies by removing vehicles semantically too similar to the tenor. The use of WordNet synonyms for evaluation correctness acknowledges that valid simile components may be paraphrases rather than exact matches.
+
+\subsection{Takeaways}
+
+ANT is a general technique potentially applicable to other NLP tasks where prediction diversity is important and standard MLM outputs are overly generic. Pattern ensemble serves as a simple but effective baseline that improves robustness even without pattern search. The framework's simplicity and reliance on publicly available models and code make it accessible for reproduction and extension. Inter-annotator agreement varies substantially by task in figurative language evaluation, with simile generation showing only moderate agreement, reflecting the inherent subjectivity in evaluating creative language generation.
+
+\end{document}

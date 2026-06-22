@@ -1,0 +1,151 @@
+\documentclass[12pt]{article}
+\usepackage{mathptmx}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{parskip}
+
+\doublespacing
+\titleformat{\section}{\large\bfseries\centering}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesection}{1em}{}
+
+\begin{document}
+
+\begin{center}
+\textbf{\Large FLUTE: Figurative Language Understanding with Textual Explanations}\\[0.5em]
+\large EMNLP 2022 --- Paper Analysis
+\end{center}
+
+%----------------------------------------------------------
+\section{Problem}
+%----------------------------------------------------------
+
+Figurative language---encompassing metaphors, similes, sarcasm, and idioms---is central to human communication, enabling speakers to convey complex ideas and emotions implicitly. Despite progress in natural language processing, understanding figurative expressions remains a persistent bottleneck. Current NLP systems lack the world knowledge, cultural context, and social awareness necessary to interpret non-literal meaning, and the absence of appropriate benchmarks makes it difficult to measure genuine progress.
+
+Recent work has framed figurative language understanding as a Natural Language Inference (NLI) task, requiring models to determine whether a premise entails or contradicts a hypothesis. However, existing figurative NLI benchmarks suffer from spurious correlations and annotation artifacts. Large language models can achieve high accuracy by exploiting superficial lexical cues---such as negation markers or antonym substitution---without truly comprehending the figurative meaning. This raises a fundamental question: are models reasoning about figurative language, or are they exploiting dataset shortcuts?
+
+Prior efforts such as e-SNLI introduced natural language explanations to general NLI as a way to probe whether models arrive at correct answers for the right reasons. Yet no equivalent explanation-based dataset exists for figurative language. Existing figurative NLI datasets lack free-form textual explanations, cover only a limited range of figurative phenomena, and contain trivially classifiable non-entailment instances. Moreover, models trained on general NLI explanation sets perform poorly when applied to figurative language, revealing a significant gap in transferability.
+
+The FLUTE paper addresses these issues with four objectives. First, the authors create a dataset of 9,000 figurative NLI instances with free-form textual explanations spanning four categories: Sarcasm, Simile, Metaphor, and Idioms. Second, they develop a scalable model-in-the-loop framework that combines GPT-3, crowd workers, and expert annotators. Third, they demonstrate that models fine-tuned on FLUTE produce higher quality explanations than those trained on existing NLI explanation datasets. Fourth, they establish baselines and evaluation protocols for figurative language understanding through textual explanations.
+
+%----------------------------------------------------------
+\section{Existing Works}
+%----------------------------------------------------------
+
+Early textual entailment challenges, such as RTE-1 and RTE-2, included some metaphor examples but were not designed specifically for figurative language. Subsequent efforts produced diverse RTE datasets that included puns as one figurative type, but coverage remained limited. More recent benchmarks like Big-Bench contain metaphor examples, though not all include literal paraphrases and contradictions, and non-entailment examples are frequently created through minimal edits that yield neutral rather than contradictory instances. The IMPLI dataset investigated NLI model performance on figurative language, drawing on prior work on parallel idiomatic expression corpora. However, its non-entailment examples were generated via minimal edits that often contradicted non-metaphoric parts of sentences rather than the metaphor itself.
+
+Among explanation-based NLI datasets, e-SNLI stands out as a large-scale resource created through crowdsourcing and used extensively for explanation generation tasks. CoS-E provides commonsense reasoning explanations, and the Movie Reviews dataset offers annotator rationales; however, neither is focused on figurative language.
+
+Research on sarcasm detection has revealed that crowd workers tend to make minimal edits---negation or antonym swaps---when creating literal equivalents of sarcastic sentences, resulting in trivial examples. Joint modeling of emotion and sarcasm has been shown to improve detection. In the context of dataset construction, prior work proposed WANLI for worker-AI collaboration in NLI creation and explored human-AI collaboration for generating free-text explanations. Studies on explanation quality have found that joint self-rationalizing models produce more label-indicative rationales than pipeline models, and LLMs have been used to explain humor in image captions and sarcasm in dialogues. Instruction-based learning has also proven effective for task generalization.
+
+Several clear gaps emerge from this landscape. No explanation-based figurative language dataset exists, preventing assessment of whether models understand figurative expressions for the right reasons. Existing datasets cover only one or few figurative language types, lacking comprehensive coverage. Minimal-edit approaches produce neutral examples or contradictions of non-figurative parts rather than of the figurative expression itself. Purely manual creation of explanation datasets is prohibitively expensive for complex linguistic phenomena, and many datasets lack expert quality validation.
+
+%----------------------------------------------------------
+\section{Findings}
+%----------------------------------------------------------
+
+The primary contribution of the FLUTE paper is the release of a dataset comprising figurative NLI instances with free-form textual explanations across four categories: Sarcasm, Simile, Metaphor, and Idioms. The labels and explanations are specifically tied to the figurative expressions rather than to superficial lexical patterns.
+
+A key finding is that general NLI explanation datasets do not transfer to figurative language. Models trained on e-SNLI, when evaluated on FLUTE, suffer accuracy drops of nearly half when explanation quality thresholds are applied at the Accuracy@50 level. This confirms that reasoning patterns learned from general NLI do not adequately capture the knowledge required for figurative understanding.
+
+In contrast, a T5 model fine-tuned on FLUTE (7,035 training examples) produces substantially higher quality explanations than the same model fine-tuned on e-SNLI (366,603 training examples), despite FLUTE being 50 times smaller. This demonstrates that domain-specific, high-quality data is more valuable than large-scale general data for the task of figurative language explanation generation. The advantage holds across all four figurative language types.
+
+Human evaluation confirms the automatic metric results: crowd workers judged T5\textsubscript{FLUTE} explanations as justifying the assigned label more frequently and rejecting them less often than T5\textsubscript{e-SNLI} explanations. The most common explanation shortcoming across models is ``Insufficient Justification,'' and T5\textsubscript{e-SNLI} explanations are additionally criticized as ``Too Trivial,'' often following rigid template patterns such as ``if A then not B.''
+
+Gold (human-verified) rationales achieve positive Rationale Quality scores, confirming that the explanations in FLUTE genuinely aid label prediction. In contrast, predicted rationales from both T5 variants yield negative Rationale Quality scores, indicating that generated explanations remain imperfect and can introduce noise.
+
+The model-in-the-loop framework proves effective at scale: expert editing rates ranged from 10\% for idioms to 40\% for metaphors, with sarcasm and simile falling at 21\% and 27\% respectively. This demonstrates that the combination of GPT-3 generation, crowd worker minimal edits, and selective expert verification can produce high-quality data while limiting manual effort.
+
+Finally, unlike prior datasets that used minimal edits contradicting non-figurative parts, FLUTE's contradictions specifically target the figurative expression itself---for instance, contradicting the metaphor rather than an unrelated component of the sentence---creating more challenging and meaningful evaluation instances.
+
+%----------------------------------------------------------
+\section{Methodology}
+%----------------------------------------------------------
+
+\subsection{Data Collection}
+
+The dataset spans four figurative language types, each with a tailored collection pipeline.
+
+\textbf{Sarcasm.} The authors began with 1,339 seed literal sentences from the Empathetic Dialogue dataset, selecting utterances from negative emotion categories (angry, afraid, embarrassed). GPT-3 generated literal paraphrases using emotion-conditioned prompting, and crowd workers on Amazon Mechanical Turk converted these paraphrases into sarcastic counterparts via minimal edits. This yielded 1,339 entailment pairs and 2,678 contradiction pairs.
+
+\textbf{Simile.} Sentences containing similes were extracted from prior work by Chakrabarty et al. (2021, 2022). GPT-3 generated literal paraphrases by replacing similes with their associated properties, and contradictions were created by inverting the meaning with respect to that property. To increase difficulty, 108 challenging instances were added from FigQA, selected based on cases where RoBERTa confused entailment with contradiction. The result was 750 entailment and 750 contradiction pairs.
+
+\textbf{Metaphor.} The authors manually selected 750 metaphors from Chakrabarty et al. (2021), Big-Bench (Srivastava et al., 2022), and IMPLI (Stowe et al., 2022). GPT-3 generated both paraphrases and contradictions, with the requirement that contradictions specifically target the metaphoric meaning rather than relying on minimal word edits. This produced 750 entailment and 750 contradiction pairs.
+
+\textbf{Idioms.} GPT-3 jointly generated paraphrases and contradictions using idiom meanings, yielding 1,000 entailment and 1,000 contradiction pairs.
+
+\textbf{Explanations.} For each \texttt{<premise, hypothesis, label>} tuple, GPT-3 generated free-form textual explanations using few-shot prompting. For idioms, the idiom meaning was also provided in the prompt to ensure the explanation grounded the non-literal interpretation.
+
+\subsection{Model Design}
+
+Following Wiegreffe et al. (2021b), the authors employ a joint self-rationalizing T5 model that simultaneously predicts the label (Entails or Contradicts) and generates the explanation. The model receives instructions in the form: ``Does the sentence `P' entail or contradict the sentence `H'? Please answer between `Entails' or `Contradicts' and explain your decision in a sentence.''
+
+Two variants are trained. T5\textsubscript{e-SNLI} uses T5 with 3 billion parameters fine-tuned on e-SNLI (366,603 training examples) for 1 epoch, with a batch size of 1024, the AdamW optimizer, and a learning rate of $1 \times 10^{-4}$; neutral examples are removed from e-SNLI. T5\textsubscript{FLUTE} uses the same architecture and hyperparameters except it is fine-tuned on FLUTE's 7,035 training examples for 10 epochs, multitasking across all four figurative language types.
+
+\subsection{Algorithms and Techniques}
+
+Few-shot prompting with GPT-3 is used throughout for generating paraphrases, contradictions, and explanations, with task-specific prompts and examples provided for each figurative language type. The model-in-the-loop framework operates in three stages: GPT-3 generates candidate instances, crowd workers perform minimal edits, and experts verify and correct the outputs. Three experts verify all GPT-3 outputs. Instances deemed insufficient are resampled (up to three rounds) or manually edited. Expert editing rates vary by type: sarcasm explanations required 21\% editing, simile 27\%, metaphor 40\%, and idiom 10\%. For the simile subset, challenging instances where RoBERTa fails are deliberately selected from FigQA to increase dataset difficulty.
+
+\subsection{Evaluation}
+
+The test set contains 1,500 instances: 750 from sarcasm and 250 each from simile, metaphor, and idiom. Three automatic metrics are employed. The \textit{Explanation Score} is the average of BERTScore and BLEURT on a 0--100 scale. \textit{Accuracy@K} measures label accuracy at explanation score thresholds of 0, 50, and 60; Accuracy@0 corresponds to standard accuracy, while Accuracy@50 counts only correct labels where the explanation score exceeds 50. \textit{Rationale Quality} (RQ) is computed as the difference in accuracy between a model given both input and rationale versus input alone for gold label prediction, evaluated using both predicted and gold rationales.
+
+Human evaluation is conducted by 79 Amazon Mechanical Turk workers (each with at least 98\% HIT approval rate) on 200 random samples (50 per figurative type). Workers judge whether each explanation justifies the label (on a four-point scale: Yes, Weak Yes, Weak No, No) and identify shortcomings from a fixed set: Insufficient Justification, Too Trivial, Too Verbose, Untrue to Input, and Violates Common Sense. Inter-annotator agreement, measured by Krippendorff's $\alpha$, is 0.45, indicating moderate agreement. The \textit{Hscore} is the average human judgment score per explanation.
+
+%----------------------------------------------------------
+\section{Limitations}
+%----------------------------------------------------------
+
+\subsection{Technical Limitations}
+
+The study does not evaluate whether model-generated natural language explanations are faithful to the model's actual reasoning process. The authors acknowledge this gap and suggest that methods from contemporaneous literature, such as those of Sia et al. (2022) and Chan et al. (2022), could be used to assess faithfulness in future work. Both T5\textsubscript{e-SNLI} and T5\textsubscript{FLUTE} produce negative Rationale Quality scores for predicted rationales, indicating that generated explanations are imperfect and can introduce noise that degrades prediction. Only gold (human-verified) rationales achieve positive RQ scores. The paper explores only a single architecture, T5 (3B), and does not investigate whether other architectures or larger models would yield different results. Additionally, while joint self-rationalizing models outperform pipeline models, their rationales are still not reliably useful for downstream prediction.
+
+\subsection{Dataset Limitations}
+
+FLUTE covers only four figurative language types; other forms such as hyperbole, irony, personification, and litotes are not included. The sarcasm portion captures only the most common form of incongruity (between sarcastic context and sentiment) but omits situational, underplayed, and dramatic sarcasm, which would require different reasoning patterns. Figurative language draws on a broad range of cultural knowledge, and while the dataset is described as diverse, the authors note it is a first step that may not capture this full breadth. The reliance on GPT-3 for generation may introduce systematic biases inherent to that model's training data. At 9,000 instances, FLUTE is significantly smaller than general NLI datasets such as e-SNLI, which may limit the ability to train large models from scratch.
+
+\subsection{Experimental Limitations}
+
+The primary comparison is against e-SNLI; comparisons with other explanation datasets (e.g., CoS-E) or other figurative language datasets are not provided. Human evaluation is conducted on 200 samples (50 per type), which may not be representative of the full dataset. Inter-annotator agreement at Krippendorff's $\alpha$ of 0.45 is only moderate, suggesting subjective variability in how evaluators assess explanation quality. The paper does not evaluate whether training on FLUTE improves performance on other figurative language tasks or datasets.
+
+\subsection{Threats to Validity}
+
+Despite manual checks, GPT-3 has been shown in prior work to exhibit societal biases, religious stereotypes, and gender stereotypes, and subtle biases may persist in the generated content. Expert verification, while critical for quality, introduces a scalability bottleneck and subjectivity. Crowd workers' ability to produce high-quality sarcastic edits may vary despite qualification tests, potentially introducing noise. Results may not generalize beyond the specific figurative language types and domains in FLUTE. Finally, there is no guarantee that explanations generated by models trained on FLUTE reflect genuine reasoning rather than plausible-sounding post-hoc rationalizations.
+
+\subsection{Current World Limitations}
+
+The faithfulness gap is arguably the most pressing concern. In real-world NLP deployments---such as content moderation, educational tools, or assistive technologies---explanations are relied upon for accountability and trust. If model-generated rationalizations do not reflect actual reasoning, they may mislead users into trusting incorrect predictions. The moderate inter-annotator agreement (Krippendorff's $\alpha = 0.45$) further suggests that explanation quality assessment itself lacks a stable standard, complicating benchmarking efforts. The dataset's English-only scope limits applicability in a multilingual world where figurative language varies significantly across cultures. Furthermore, the exclusive reliance on text ignores the prevalence of figurative expression in multimodal contexts such as memes, videos, and comics, where visual cues are inseparable from linguistic interpretation. Finally, the static, benchmark-style evaluation does not capture the interactive settings (e.g., dialogue assistants) where explanations must be generated dynamically and adapted to user feedback.
+
+%----------------------------------------------------------
+\section{Future Work}
+%----------------------------------------------------------
+
+\subsection{Short-Term Improvements}
+
+The authors propose evaluating the faithfulness of model-generated NLEs using methods from contemporaneous work, such as logical satisfiability of counterfactuals or the FRAME metric (Sia et al., 2022; Chan et al., 2022). They suggest conducting targeted human studies to assess whether explanations mimic societal biases, are credible, and are free from stereotypes---going beyond the toxic text verification performed in the current work. The benchmark should be expanded by evaluating additional model architectures, including GPT-3, larger T5 variants, and instruction-tuned models, to establish more comprehensive baselines. Human evaluation should be scaled beyond the current 200 samples to improve statistical reliability.
+
+\subsection{Long-Term Research Directions}
+
+The dataset should be extended to cover additional forms of figurative language, including hyperbole, irony, personification, litotes, and synecdoche. Multimodal figurative language understanding---in memes, comics, and videos---represents an important direction given the prevalence of figurative expression in such media. Cross-lingual extensions are needed, as figurative expressions are often language- and culture-specific. The sarcasm portion should be broadened to capture situational, underplayed, and dramatic forms, and positive-emotion sarcasm should be incorporated alongside the negative-emotion data currently in FLUTE.
+
+\subsection{Potential Extensions}
+
+The authors suggest developing methods to improve explanation faithfulness and quality, moving beyond plausibility toward genuine reasoning transparency. Downstream transfer experiments should investigate whether training on FLUTE improves performance on tasks such as sentiment analysis, dialogue systems, or machine translation. FLUTE could serve as a testbed for adversarial evaluation of figurative language understanding, following the model of how e-SNLI has probed NLI model robustness. Neuro-symbolic approaches combining neural models with symbolic reasoning merit investigation. Interactive human-in-the-loop explanation refinement, where models iteratively improve explanations based on user feedback, is another avenue. Finally, more recent language models beyond GPT-3 could be leveraged to generate higher-quality instances with reduced expert editing.
+
+%----------------------------------------------------------
+\section{Learning}
+%----------------------------------------------------------
+
+\subsection{Main Contributions}
+
+FLUTE provides a new benchmark of figurative NLI instances with free-form textual explanations spanning four figurative language types. Both labels and explanations are tied to the figurative expression itself, avoiding the artifacts that plague prior datasets. The model-in-the-loop framework---combining LLM generation, crowd worker editing, and expert verification---offers a scalable recipe for building explanation datasets for complex linguistic phenomena. Baseline experiments establish that domain-specific, high-quality data substantially outperforms larger general-purpose data for figurative language explanation generation. The evaluation protocol, encompassing both automatic metrics (Explanation Score, Accuracy@K, Rationale Quality) and human evaluation (Hscore, shortcoming categorization), provides a template for future work on explanation quality assessment.
+
+\subsection{Important Findings and Lessons}
+
+The failure of e-SNLI to transfer to figurative language underscores that general NLI reasoning patterns do not capture the specialized knowledge required for non-literal interpretation. The quality-over-quantity lesson is central: FLUTE's 7,035 training examples outperform e-SNLI's 366,603, demonstrating that domain specificity and annotation quality matter more than scale for specialized tasks. Joint self-rationalizing models are confirmed to produce more label-indicative explanations than pipeline approaches, consistent with prior findings. Figurative language demands specialized treatment---generic NLI models and datasets do not suffice. For sarcasm generation specifically, emotion-conditioned prompting in GPT-3 produces more creative and complex paraphrases that are easier for crowd workers to convert.
+
+\subsection{Practical Takeaways}
+
+The model-in-the-loop framework represents a viable and scalable approach for building explanation datasets: LLM generation followed by crowd editing and selective expert verification balances quality against cost. For model developers, fine-tuning on small domain-specific explanation data is more effective than training on large-scale general explanation data for specialized tasks. For evaluators, standard accuracy is insufficient to assess genuine understanding; explanation quality thresholds and human evaluation are necessary. FLUTE provides a challenging testbed for developing models that can both understand and explain figurative language, contributing toward the broader goal of interpretable NLP systems.
+
+\end{document}

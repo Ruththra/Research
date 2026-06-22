@@ -1,0 +1,119 @@
+\documentclass[12pt]{article}
+\usepackage{times}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{parskip}
+
+\doublespacing
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection.}{0.5em}{}
+
+\title{Simile Property Probing: Evaluating Pre-trained Language Models' Ability to Interpret Similes}
+\author{Paper Analysis --- ACL 2022}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Problem}
+
+Similes are figures of speech that compare two fundamentally different entities via shared properties. They are widely used in natural language, with over 30\% of comparisons in product reviews being similes, and play a vital role in making utterances more vivid. Simile interpretation is a crucial NLP task that can assist downstream tasks such as understanding figurative language and sentiment analysis.
+
+Pre-trained language models (PLMs) have achieved state-of-the-art performance on many NLP tasks and have been shown to encode various kinds of knowledge in their contextual representations. However, whether PLMs can interpret similes by inferring shared properties remains under-explored. This paper investigates the ability of PLMs to interpret similes, specifically asking: \textit{Can PLMs infer the shared properties of similes as well as humans?}
+
+The task is formulated as ``Simile Property Probing'' --- given a closed simile with the shared property masked, the model must identify the correct property from four candidate options (one correct, three hard distractors). The research objectives are: (1) systematically evaluate PLMs (BERT and RoBERTa) for simile interpretation, (2) construct probing datasets from general corpora and human-designed questions covering 1,633 examples across seven categories, (3) identify which simile components contribute most to property inference, (4) propose a knowledge-enhanced training objective to bridge the PLM-human performance gap, and (5) validate the approach on a downstream sentiment classification task.
+
+Key challenges include designing distractors that are both true-negative and challenging, avoiding multiple correct answers (motivating the multiple-choice formulation), bridging the PLM-human performance gap, incorporating simile-specific knowledge without disrupting general language understanding, and handling diverse context types across data sources.
+
+\section{Existing Works}
+
+Previous approaches to simile interpretation include: \textbf{EMB} (Qadir et al., 2016), which obtains a composite simile vector by element-wise sum of word embeddings for vehicle and event, then selects the answer with the shortest cosine distance; \textbf{Meta4meaning} (Xiao et al., 2016), which ranks properties by statistical association with both topic and vehicle; \textbf{ConScore} (Zheng et al., 2019), which suggests better properties have smaller and balanced distances to topic and vehicle; and \textbf{MIUWE} (Bar et al., 2020), which assigns scores based on statistical co-occurrences and similarity to collocations.
+
+Related research spans three areas: simile processing (detection, generation, and interpretation via property ranking), probing tasks for PLMs (linguistic knowledge, commonsense knowledge, symbolic reasoning), and enhancing PLMs via knowledge regularization (span-boundary objectives, copy-based training, knowledge embedding objectives).
+
+Gaps in existing solutions include: no prior work systematically evaluates PLMs' ability to interpret similes via a dedicated probing task; existing methods rely primarily on statistical co-occurrence and embedding similarities without leveraging structured topic-property-vehicle relationships; previous probing tasks do not address simile interpretation; existing knowledge-enhanced training objectives do not incorporate simile-specific relational knowledge; and the gap between PLM and human performance is not well characterized.
+
+\section{Findings}
+
+This paper introduces ``Simile Property Probing'' --- the first systematic task to evaluate PLMs' ability to interpret similes by inferring shared properties from multiple-choice options. The authors state: ``To our best knowledge, we are the first to systematically evaluate the ability of PLMs in interpreting similes.''
+
+The paper constructs two probing datasets (1,633 examples) from general corpora (BNC, iWeb) and human-designed questions (Quizizz), covering seven property categories with carefully designed hard distractors using ConceptNet and COMET. A novel knowledge-enhanced training objective is proposed that complements MLM loss with a knowledge embedding loss (TransE-style) modeling the (topic, property, vehicle) triplet relationship, achieving improved performance on both probing and downstream sentiment classification.
+
+Component contribution analysis reveals that vehicle and topic are most important for property inference, followed by the comparator. The paper demonstrates that PLMs already possess simile interpretation ability at pre-training and that the knowledge-enhanced objective helps close (though not eliminate) the gap with human performance.
+
+\section{Methodology}
+
+The methodology consists of four stages: (1) construction of simile property probing datasets from two sources, (2) empirical evaluation of PLMs in zero-shot and fine-tuned settings, (3) analysis of component contributions to property inference, and (4) design and evaluation of a knowledge-enhanced training objective.
+
+\subsection{Data Collection}
+
+Sentences matching the syntactic pattern ``as ADJ as (a, an, the) NOUN'' were extracted from the British National Corpus (BNC) and iWeb, yielding 1,917 sentences. Similes were extracted from Quizizz platform quiz questions, yielding 875 complete closed similes from 1,235 quizzes. The final dataset comprises 1,633 probes covering seven property categories (Qualities, Condition, Sense, Measurement, Color, Time, Emotion). Three annotators verified simile identification (Fleiss' Kappa = 0.77) and confirmed distractor quality. Multi-token properties were replaced with single-token synonyms from WordNet and ConceptNet. Training data for fine-tuning came from the Standardized Project Gutenberg Corpus (SPGC), with 4,510 simile sentences extracted via pattern matching and dependency parsing.
+
+\subsection{System Design}
+
+Models evaluated include BERT-BASE, BERT-LARGE, RoBERTa-BASE, and RoBERTa-LARGE. The probing task formulation requires selecting the correct property from four options (one correct + three hard distractors) given a simile with the shared property masked. The knowledge-enhanced objective treats each simile as a triplet (topic, property, vehicle) and applies a knowledge embedding loss based on TransE scoring: $L_{KE} = MSE(E_t + E_p, E_v)$. The final objective jointly optimizes: $L_{Ours} = \alpha \cdot L_{KE} + L_{MLM}$, where $\alpha$ is a hyperparameter. Downstream validation uses sentiment classification on Amazon reviews (binary, 5,023 reviews, 6:2:2 split) with MLP classifiers on top of frozen PLM representations.
+
+\subsection{Algorithms and Techniques}
+
+Distractor generation uses candidates from four semantic-related components (topic, vehicle, event, property) with antonyms from WordNet/ConceptNet and HasProperty relations from ConceptNet/COMET. Adjectives/adverbs are ranked by frequency in Wikipedia and BookCorpus. Distractor selection uses cosine similarity between sentence embeddings (RoBERTa-LARGE [CLS]) with correct property vs. distractor --- the top 3 most similar (most challenging) distractors are selected. Component influence analysis masks/replaces each component (topic, vehicle, event, comparator) to measure its contribution to property inference accuracy. Knowledge embedding methods compared include TransE, TransH, and TransD, with TransE found to be sufficient.
+
+\subsection{Evaluation Process}
+
+Evaluation settings include: zero-shot (off-the-shelf PLMs with pre-trained masked-word-prediction heads), fine-tuned (PLMs fine-tuned with MLM objective on masked property prediction), and knowledge-enhanced (PLMs fine-tuned with combined KE + MLM objective). Metrics include accuracy on the probing task (1,633 examples) and accuracy on downstream sentiment classification. Human performance baseline uses 250 random questions annotated by three people with majority vote. Implementation uses HuggingFace Transformers with batch sizes \{8, 16\}, $\alpha$ in \{3, 5, 10\}, max sequence length 128, learning rate 1e-5, 10 epochs for probing, and 200 epochs for sentiment classification.
+
+\section{Limitations}
+
+\subsection{Technical Limitations}
+
+The knowledge-enhanced objective relies on TransE, a relatively simple knowledge embedding method. While more complex methods (TransH, TransD) do not significantly improve results, more advanced knowledge integration approaches (e.g., graph neural networks, neuro-symbolic methods) remain unexplored. The probing task is limited to closed similes with explicit properties; open similes are not addressed. Only BERT and RoBERTa families are evaluated; other PLM architectures (GPT, T5, DeBERTa) are not tested. The component influence analysis uses a simple masking/replacement strategy that may not fully capture nuanced interactions.
+
+\subsection{Dataset Limitations}
+
+The dataset size is relatively small (1,633 examples), potentially limiting generalizability. Data is sourced from only two general corpora (BNC, iWeb) and one educational platform (Quizizz), missing simile usage in other domains. All properties are single-token, achieved by replacing multi-token properties with synonyms, which may not reflect real-world simile complexity. The seven property categories are imbalanced, with Qualities (27.78\%) heavily represented and Emotion (5.26\%) underrepresented. Only English similes are studied; cross-lingual generalization is unknown.
+
+\subsection{Experimental Limitations}
+
+Human performance baseline is based on only 250 questions with three annotators per question. The downstream task is limited to binary sentiment classification on Amazon reviews; other downstream tasks are not evaluated. The paper does not explore the effect of different $\alpha$ values in depth beyond testing \{3, 5, 10\}. Fine-tuning for the probing task uses a relatively small training set (4,510 sentences from SPGC).
+
+\subsection{Threats to Validity}
+
+Construct validity: the multiple-choice probing format may not fully capture the open-ended nature of human simile interpretation. Internal validity: the knowledge-enhanced objective's improvement may be confounded by the additional training signal. External validity: results may not generalize to other languages, domains, or PLM architectures. Annotation bias: human annotators who confirmed distractors also contributed to human performance measurement. Category subjectivity: property category classification involves some subjectivity, though annotator agreement was required.
+
+\subsection{Current World Limitations}
+
+In real-world applications, simile interpretation requires handling open-ended properties, multi-token expressions, and diverse domains beyond the limited sources studied. The restriction to English and single-token properties significantly limits practical deployment. The binary sentiment classification downstream task does not reflect the full range of applications where simile understanding is valuable (e.g., creative writing assistance, educational tools, cross-cultural communication). The relatively small dataset and limited PLM architecture coverage mean the findings may not scale to production systems handling diverse, multilingual content.
+
+\section{Future Work}
+
+\subsection{Short-Term Improvements}
+
+The authors suggest experimenting with more advanced knowledge embedding methods or hybrid objectives (e.g., combining KE loss with contrastive learning) to further close the gap with human performance. They recommend expanding the dataset to include more examples, particularly for underrepresented categories (Emotion, Time, Color) and from additional domains (social media, literature). Evaluating a broader range of PLM architectures (GPT-style, encoder-decoder, larger models) on the simile property probing task is identified as important future work. The authors also suggest conducting more systematic hyperparameter studies for the $\alpha$ balancing factor and extending the probing task to open similes where the property is implicit.
+
+\subsection{Long-Term Research Directions}
+
+Long-term directions include exploring the interpretation of more sophisticated figurative language such as metaphor and analogy, investigating cross-lingual simile interpretation, developing methods for simile generation that leverage the knowledge-enhanced training objective, integrating multimodal knowledge (e.g., visual properties of entities) to improve property inference, and studying the developmental trajectory of simile understanding in PLMs across different scales.
+
+\subsection{Potential Extensions}
+
+The authors propose applying the knowledge-enhanced objective framework to other relational NLP tasks, combining the probing task with chain-of-thought or explanation generation, extending the approach to multi-token properties without synonym replacement, investigating the interaction between simile interpretation and other figurative language phenomena (irony, hyperbole), and deploying the simile property probing dataset as a benchmark for evaluating future PLMs.
+
+\section{Learning}
+
+\subsection{Main Contributions}
+
+The paper introduces three key contributions: (1) ``Simile Property Probing'' --- the first systematic task to evaluate PLMs' ability to interpret similes; (2) two multi-choice probing datasets (1,633 examples) constructed from general corpora and human-designed questions covering seven property categories; and (3) a knowledge-enhanced training objective that complements MLM loss with a TransE-style knowledge embedding loss modeling the (topic, property, vehicle) triplet relationship.
+
+\subsection{Important Findings}
+
+PLMs already possess simile interpretation ability at the pre-training stage, which can be enhanced through fine-tuning. Fine-tuned PLMs still underperform humans by several accuracy points. Vehicle and topic are the most important components for property inference, followed by the comparator. RoBERTa consistently outperforms BERT, likely due to its larger pre-training corpus. Models perform better on the Quizzes dataset than the General Corpus dataset, indicating diverse contexts increase inference difficulty. Models perform well on color properties but struggle on qualities, temporal properties, and emotions that require deeper contextual understanding. The knowledge embedding objective brings representations of topic, property, and vehicle closer together in the embedding space.
+
+\subsection{Lessons Learned}
+
+Structured relational knowledge (topic-property-vehicle triplets) can be effectively incorporated into PLM training via knowledge embedding methods. Simple knowledge embedding methods (TransE) are sufficient; more complex variants (TransH, TransD) do not provide significant additional gains. Distractor design is critical for probing tasks --- distractors must be both true-negative and challenging. Multiple-choice formulation is preferable to cloze tasks because shared properties may not be unique. Joint optimization of knowledge embedding and MLM objectives allows PLMs to retain general language understanding while acquiring simile-specific knowledge.
+
+\subsection{Practical Takeaways}
+
+When designing probing tasks, careful distractor generation using external knowledge bases (ConceptNet, COMET) and embedding-based similarity selection can significantly improve task difficulty and diagnostic value. Component-level analysis (masking/replacement) is an effective method for understanding model reliance on input parts. Knowledge-enhanced objectives are a lightweight and effective way to inject domain-specific relational knowledge into PLMs without architectural changes. The simile property probing framework is extensible to other figurative language phenomena. The datasets and code are publicly available at \texttt{https://github.com/Abbey4799/PLMsInterpret-Simile}.
+
+\end{document}

@@ -1,0 +1,97 @@
+\documentclass[12pt]{article}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+
+\setstretch{1.15}
+
+\title{Generating Similes Effortlessly Like a Pro:\\
+A Style Transfer Approach for Simile Generation}
+\author{Tuhin Chakrabarty, Smaranda Muresan, and Nanyun Peng\\
+EMNLP 2020}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Problem}
+
+Similes are figurative comparisons that enrich descriptions in poetry, literature, and creative writing by mapping a shared property between two otherwise dissimilar entities. While computational linguistics has produced a substantial body of work on simile detection and analysis, the task of generating similes from literal input has remained largely unexplored. This gap is significant because simile generation could support downstream applications such as creative writing assistance, literary content generation, and computational journalism.
+
+The task can be stated as follows: given a literal descriptive sentence that contains a TOPIC, an EVENT, and an explicit PROPERTY (usually an adjective or adverb), produce a simile that introduces a VEHICLE through a comparator (typically ``like a'' or ``as \ldots as'') while preserving the intended property. A central difficulty is that the PROPERTY in natural similes is often implicit---readers must infer it from context and commonsense knowledge. This makes open similes (those without an explicit property word) substantially harder to generate than closed similes.
+
+Two primary challenges arise. First, no large-scale parallel corpus of literal--simile pairs existed prior to this work, which precluded straightforward supervised training. Second, a generated simile must be both semantically relevant (the vehicle must genuinely share the property with the topic) and stylistically creative (the comparison should be vivid rather than generic). Standard automatic metrics such as BLEU are poorly suited to evaluating creative output because they penalize the very novelty that makes a simile effective.
+
+\section{Existing Works}
+
+Prior computational work on similes has concentrated on detection and analysis rather than generation. Niculae and Danescu-Niculescu-Mizil (2014) proposed annotation frameworks for identifying similes in user-generated product reviews; Qadir et al. (2015, 2016) built models to recognize affective polarity and infer implicit properties in similes; Liu et al. (2018) and Zeng et al. (2019) extended neural approaches to simile recognition. These systems address classification and property inference but do not produce new similes.
+
+Research on metaphor generation is more closely related, yet the overlap between similes and metaphors is only partial (Israel et al., 2004). Earlier metaphor generation methods relied on templates, heuristics, lexical databases, or word embeddings (Abe et al., 2006; Terai and Nakagawa, 2010; Gero and Chilton, 2019; Gagliano et al., 2016; Young, 1987). More recent neural approaches include unsupervised metaphor generation (Yu and Wan, 2019) and the metaphor masking framework of Stowe et al. (2020), which fine-tunes BART on literal sentences with masked adjectives or adverbs. However, these methods hinge on metaphorical verbs rather than the comparator structure of similes, and they do not explicitly model the relevance mapping between a topic and a vehicle through a shared property.
+
+Style transfer research has demonstrated that pretrained sequence-to-sequence models can be fine-tuned to transform text between parallel corpora (Shen et al., 2017; Fu et al., 2017; Li et al., 2018; Sudhakar et al., 2019). Before this work, no study had applied such a framework to simile generation, nor had any large-scale parallel corpus of literal--simile pairs been made available.
+
+\section{Findings}
+
+The paper makes three contributions. First, it introduces simile generation as a new natural language generation (NLG) task and proposes SCOPE (Style transfer through COmmonsense PropErty), the first framework to address it. Second, it presents a method for automatically constructing a parallel corpus of 87,843 literal--simile pairs by transforming self-labeled similes collected from Reddit into their literal counterparts using structured commonsense knowledge from COMET (Bosselut et al., 2019). Third, it demonstrates that fine-tuning BART (Lewis et al., 2019) on these pairs produces similes that are preferred by human judges over those from retrieval-based, vanilla BART, and metaphor masking baselines.
+
+Automatic evaluation shows that SCOPE achieves the highest BLEU-1, BLEU-2, and BERTScore among the compared systems. Its novelty score is 88.6\%, meaning the majority of generated vehicles do not share properties with the training set, and 41\% of test properties are unseen during training, confirming generalization. Human evaluation on 900 utterances rated along four dimensions---Creativity, Overall Quality, Relevance to Property, and Relevance to Topic---shows that SCOPE significantly outperforms all baselines ($p < .001$). In pairwise comparisons, SCOPE beats the metaphor masking system (Stowe et al., 2020) on every metric and wins against two literary experts on Overall Quality 32.6\% and 41.3\% of the time, respectively.
+
+A task-based evaluation further validates the practical value of generated similes. When GPT-2-generated stories are post-processed by replacing a literal sentence with a SCOPE-generated simile, Turkers prefer the embellished stories 42\% of the time, compared with 25\% for stories without similes and 25\% for stories post-processed with the metaphor masking baseline.
+
+\section{Methodology}
+
+SCOPE proceeds in two stages: automatic parallel corpus creation and fine-tuning of a sequence-to-sequence model.
+
+\subsection{Automatic Parallel Corpus Creation}
+
+The target side of the corpus consists of self-labeled similes collected from the WritingPrompts and Funny subreddits using the phrase ``like a'' as a distant-supervision pattern. The authors use the Pushshift API to mine comments and obtain 87,843 similes after filtering. For the source side, each simile is transformed into a literal sentence by extracting the vehicle (the noun phrase following ``like a''), querying COMET for its top five commonsense properties via the HasProperty relation, appending each property to the prefix preceding ``like a'' to form candidate literal sentences, ranking the candidates by GPT perplexity, and applying a grammatical error correction model (Zhao et al., 2019) to fix malformed outputs. The result is a parallel corpus of 82,697 training pairs and 5,146 validation pairs.
+
+Test data are collected separately: 150 literal sentences are sampled from WritingPrompts with the constraint that the final word is an adjective or adverb. Two literary experts---a creative writing student and a comparative literature student who has authored a novel---write corresponding similes for each input.
+
+\subsection{Sequence-to-Sequence Model}
+
+SCOPE fine-tunes BART-large (400 million parameters) on the literal--simile pairs, treating the literal sentence as the encoder input and the simile as the decoder target. At inference time, top-$k$ sampling ($k=5$) with a softmax temperature of 0.7 is used to generate outputs. The model is trained for 17 epochs on four RTX 2080 GPUs in approximately 52 minutes.
+
+\subsection{Evaluation}
+
+Automatic metrics include BLEU-1, BLEU-2, BERTScore, and novelty (the proportion of generated vehicles whose property does not appear in training). Human evaluation is conducted on Amazon Mechanical Turk with 900 utterances (600 system-generated and 300 human-generated) rated on Creativity, Overall Quality, Relevance to Property, and Relevance to Topic on a 1--5 scale. Pairwise comparisons are aggregated into win/loss/tie counts. The downstream task-based evaluation uses ROCStories and a Plan-and-Write GPT-2 pipeline to test whether post-processing with generated similes improves story evocativeness.
+
+\section{Limitations}
+
+\subsection{Technical Limitations}
+
+The approach is restricted to similes that use the comparator ``like a''; it does not cover ``as \ldots as'' constructions or other figurative forms. The quality of the generated simile depends on COMET's ability to predict relevant properties, which can be noisy or contextually inappropriate. The literal reconstruction step can introduce grammatical errors that require a separate correction model. Top-$k$ sampling increases diversity but may also produce lower-precision outputs.
+
+\subsection{Dataset Limitations}
+
+The automatically constructed corpus is weakly supervised and contains noise. Some collected instances are not true similes (e.g., ``I feel like a fool''), though the authors estimate such cases at only 1.1\% of the data. Training data sourced from Reddit may carry stylistic biases toward informal or humorous registers. The evaluation set is small, comprising 150 literal sentences annotated by two experts.
+
+\subsection{Experimental Limitations}
+
+BLEU and similar automatic metrics are poorly suited to creative generation and can understate output quality. Human evaluation, while more informative, is expensive and employs a limited number of annotators per example. The task-based story evaluation is tied to a specific GPT-2 storytelling pipeline, so generalization to other generators has not been directly demonstrated.
+
+\subsection{Current World Limitations}
+
+Beyond the authors' explicit remarks, several practical constraints deserve attention. First, the pipeline assumes the literal input ends in an adjective or adverb, which excludes many real-world sentences where the property is expressed periphrastically or distributed across clauses. Second, the system generates a single simile per input, whereas a creative writing tool might need to offer multiple diverse candidates. Third, the evaluation focuses on isolated sentences; in authentic writing, similes must cohere with surrounding discourse, including narrative tone, character voice, and thematic consistency, none of which are modeled here. Fourth, the Reddit-derived corpus reflects the demographics and stylistic tendencies of that platform, which may not transfer to domains such as children's literature, scientific communication, or non-English languages. Finally, the framework does not provide a mechanism for controlling attributes such as register, emotional intensity, or cultural appropriateness of the generated simile.
+
+\section{Future Work}
+
+The authors identify several directions for future research. They suggest exploring additional knowledge bases beyond COMET and ConceptNet to improve commonsense inference quality. They also propose refining the parallel corpus creation pipeline to reduce noise in weakly labeled similes and improving the literal-to-simile transformation for better grammaticality and contextual fit. A longer-term ambition is to extend the style-transfer framework to other creative NLG tasks, specifically pun generation (He et al., 2019), sarcasm generation (Chakrabarty et al., 2020), and hyperbole generation (Troiano et al., 2018). The paper concludes by noting that future work could combine commonsense reasoning with richer discourse context so generated figures of speech fit longer passages more naturally.
+
+\section{Learning}
+
+Several technical and conceptual takeaways emerge from this work.
+
+\paragraph{Commonsense knowledge is essential for figurative language generation.} Because similes require mapping a property onto an appropriate vehicle, a structured knowledge source (COMET) provides candidate properties that a purely distributional model might miss. The paper demonstrates that incorporating such knowledge improves relevance without sacrificing creativity.
+
+\paragraph{Relevance is as important as fluency.} The qualitative analysis shows that baseline systems often produce fluent but contextually inappropriate similes (e.g., ``silver bullets are like a diamond'' when the context demands something expensive and dangerous). SCOPE's use of commonsense properties during training enables it to maintain relevance to both the topic and the property.
+
+\paragraph{Weak supervision can bootstrap creative NLG tasks.} The automatic corpus creation method---distant supervision plus commonsense-driven transformation---provides a template for other generation tasks where parallel data is scarce. The key insight is that existing figurative expressions (similes, metaphors, puns) can be literalized at scale to produce training pairs.
+
+\paragraph{Style-transfer framing is effective for figurative language.} By treating simile generation as a transfer from literal to figurative style, the authors leverage pretrained denoising autoencoders (BART) that already possess strong language modeling capabilities. This reduces the need for task-specific architecture design.
+
+\paragraph{Task-based evaluation complements intrinsic metrics.} The story post-processing experiment shows that generated similes improve downstream text quality, providing evidence that the similes are not merely novel or fluent but also functional in realistic writing contexts.
+
+\paragraph{Creative NLG benefits from multi-dimensional evaluation.} The paper's use of four separate human judgment dimensions (Creativity, Overall Quality, Relevance to Property, Relevance to Topic) reveals that systems can score well on one dimension while failing on another, underscoring the need for fine-grained evaluation protocols.
+
+\end{document}
